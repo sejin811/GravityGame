@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 import os
+import requests # 서버 통신용
 
 
 # 초기화
@@ -312,6 +313,22 @@ def save_highscore(score):
     with open(HIGHSCORE_FILE, "w", encoding="utf-8") as f:
         f.write(str(score))
 
+def send_score_to_server(name, score):
+    """서버에 플레이어 이름과 점수를 전송합니다."""
+    # 서버 주소 (나중에 공개 주소로 변경해야 함)
+    url = "http://127.0.0.1:8000/add_score"
+    data = {"name": name, "score": score}
+    
+    try:
+        response = requests.post(url, json=data, timeout=5)
+        # 서버로부터 응답 확인 (선택 사항)
+        if response.status_code == 200:
+            print("점수가 성공적으로 서버에 등록되었습니다.")
+        else:
+            print(f"서버에 점수 등록 실패: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"서버 연결에 실패했습니다: {e}")
+
 def reset_game():
     global ship, planets, fuelpods, game_over, explosion_timer, shake_timer
     ship = Spaceship(0, 0)
@@ -579,7 +596,7 @@ def main():
                         game_state = "instructions"
                     elif upgrade_button_rect.collidepoint(mouse_pos):
                         game_state = "upgrade"
-                    elif quit_button_rect.collidepoint(mouse_pos):  # 👈 추가
+                    elif quit_button_rect.collidepoint(mouse_pos):  #  추가
                         pygame.quit()
                         sys.exit()
                 elif game_state == "instructions":
@@ -684,10 +701,13 @@ def main():
             # 게임 오버 처리
             if not ship.alive:
                 game_state = "game_over"
-                # 최고점수 저장
+                # 최고점수 저장 및 서버 전송
                 highscore = load_highscore()
                 if score > highscore:
                     save_highscore(score)
+                
+                # 서버에 점수 전송
+                send_score_to_server(player_name, score)
 
         elif game_state == "game_over":
             draw_game_over(screen, mouse_pos, score)
