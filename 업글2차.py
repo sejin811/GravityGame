@@ -315,8 +315,8 @@ def save_highscore(score):
 
 def send_score_to_server(name, score):
     """서버에 플레이어 이름과 점수를 전송합니다."""
-    # 서버 주소 (나중에 공개 주소로 변경해야 함)
-    url = "http://127.0.0.1:8000/add_score"
+    # 서버 주소 
+    url = "https://gravity-game-backend.onrender.com/add_score"
     data = {"name": name, "score": score}
     
     try:
