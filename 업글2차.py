@@ -503,20 +503,26 @@ def draw_fuel_bar(surface, fuel):
     surface.blit(fuel_text, (x + 5, y + 22))
 
 def draw_score(surface, score):
-    score_text = game_font.render(f"점수: {int(score)}", True, WHITE)
-    surface.blit(score_text, (WIDTH - 180, 10))
+    score_text = game_font.render(f"{player_name} 점수: {int(score)}", True, WHITE)  # [변경]
+    surface.blit(score_text, (WIDTH - 250, 10))
 
 def main():
     global game_state, upgrade_button_areas, ship, planets, fuelpods, game_over
     global explosion_timer, shake_timer, highscore
     global fullscreen  # 추가: 전체화면 상태 저장 변수
+    global player_name, input_active, input_text 
 
     fullscreen = False  # 시작은 창모드
 
     upgrade_button_areas = {}
 
+    player_name = ""
+    input_active = False
+    input_text = ""
+
+    game_state = "enter_name"
+
     # 게임 상태: "menu", "instructions", "playing", "game_over", "upgrade"
-    game_state = "menu"
 
     reset_game()
 
@@ -544,6 +550,17 @@ def main():
                     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 
             elif event.type == pygame.KEYDOWN:
+                if game_state == "enter_name":  # [추가]
+                    if event.key == pygame.K_RETURN:
+                        player_name = input_text.strip()
+                        if player_name:
+                            game_state = "menu"  # 이름 입력 완료 → 메뉴로 이동
+                    elif event.key == pygame.K_BACKSPACE:
+                        input_text = input_text[:-1]
+                    else:
+                        if len(input_text) < 12 and event.unicode.isprintable():
+                            input_text += event.unicode
+                        
                 if event.key == pygame.K_F11:
                     fullscreen = not fullscreen
                     if fullscreen:
@@ -597,6 +614,17 @@ def main():
                         game_state = "menu"
 
         screen.blit(space_bg, (0, 0))
+        if game_state == "enter_name":  # [추가]
+            try:
+                font = pygame.font.SysFont("malgungothic", 40)
+            except:
+                font = pygame.font.SysFont(None, 40)
+            screen.fill((0, 0, 30))
+            prompt = font.render("당신의 이름을 입력하세요:", True, WHITE)
+            name_display = font.render(input_text + "|", True, (200, 200, 0))
+
+            screen.blit(prompt, (WIDTH // 2 - prompt.get_width() // 2, HEIGHT // 2 - 80))
+            screen.blit(name_display, (WIDTH // 2 - name_display.get_width() // 2, HEIGHT // 2 - 20))
 
         if game_state == "menu":
             draw_menu(screen, mouse_pos)
