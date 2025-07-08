@@ -5,6 +5,16 @@ import os
 import requests # 서버 통신용
 
 
+def resource_path(relative_path):
+         """ PyInstaller로 생성된 .app 내부의 리소스 경로를 가져옵니다. """
+         try:
+             # PyInstaller가 생성한 임시 폴더
+             base_path = sys._MEIPASS
+         except Exception:
+             # 일반적인 Python 환경
+             base_path = os.path.abspath(".")
+             return os.path.join(base_path, relative_path)   
+
 # 초기화
 pygame.init()
 WIDTH, HEIGHT = 800, 600
@@ -12,7 +22,8 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 pygame.display.set_caption("Gravity Game - Dense Galaxy")
 
-space_bg = pygame.image.load("space_background.jpg").convert()
+image_path = resource_path("space_background.jpg")
+space_bg = pygame.image.load("image_path").convert()
 space_bg = pygame.transform.scale(space_bg, (WIDTH, HEIGHT))  # 창 크기에 맞게 조절
 
 # 색상
