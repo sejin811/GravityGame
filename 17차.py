@@ -33,11 +33,10 @@ PLANET_SAFE_DISTANCE = 500
 
 FUEL_MAX = 200
 FUEL_CONSUMPTION = 10
-FUEL_POD_RECHARGE = 150
+FUEL_POD_RECHARGE = 150  # 수정된 부분
 FUEL_POD_COUNT = 20
 
 SHIP_THRUST = 150
-
 WARNING_DISTANCE = 120
 MINIMAP_SCALE = 0.05
 
@@ -92,7 +91,6 @@ class Spaceship:
         self.distance_traveled += (self.pos - self.prev_pos).length()
         self.prev_pos = self.pos.copy()
 
-        # 맵 경계 제한 및 속도 0 처리
         if self.pos.x < -MAP_HALF:
             self.pos.x = -MAP_HALF
             self.vel.x = 0
@@ -142,7 +140,6 @@ class Planet:
 
     def update(self, dt):
         self.pos += self.vel * dt
-        # 맵 경계 반사
         if self.pos.x < -MAP_HALF or self.pos.x > MAP_HALF:
             self.vel.x *= -1
             self.pos.x = max(min(self.pos.x, MAP_HALF), -MAP_HALF)
@@ -173,7 +170,6 @@ class FuelPod:
 
 def generate_planets():
     planets = []
-
     def place_planets(count, planet_type):
         tries = 0
         placed = 0
@@ -188,7 +184,6 @@ def generate_planets():
             if not too_close:
                 planets.append(Planet(x, y, planet_type))
                 placed += 1
-
     place_planets(10, "red")
     place_planets(60, "blue")
     place_planets(30, "green")
@@ -217,34 +212,24 @@ def draw_minimap(surface, ship, planets, fuelpods):
     minimap_height = int(HEIGHT * 0.25)
     minimap = pygame.Surface((minimap_width, minimap_height))
     minimap.fill(MINIMAP_COLOR)
-
     center = pygame.Vector2(minimap_width // 2, minimap_height // 2)
-
     map_top_left = (-MAP_HALF - ship.pos.x, -MAP_HALF - ship.pos.y)
     map_top_left_scaled = pygame.Vector2(map_top_left) * MINIMAP_SCALE + center
-
     map_size_scaled = MAP_SIZE * MINIMAP_SCALE
-
     boundary_rect = pygame.Rect(map_top_left_scaled.x, map_top_left_scaled.y, map_size_scaled, map_size_scaled)
     pygame.draw.rect(minimap, WARNING_COLOR, boundary_rect, 2)
-
     for planet in planets:
         offset = (planet.pos - ship.pos) * MINIMAP_SCALE
         pos = center + offset
         if 0 <= pos.x < minimap_width and 0 <= pos.y < minimap_height:
             pygame.draw.circle(minimap, planet.color, pos, 3)
-
     for pod in fuelpods:
         if not pod.collected:
             offset = (pod.pos - ship.pos) * MINIMAP_SCALE
             pos = center + offset
             if 0 <= pos.x < minimap_width and 0 <= pos.y < minimap_height:
                 pygame.draw.circle(minimap, (100, 255, 100), pos, 2)
-
-    # === 우주선 위치 (중앙) ===
     pygame.draw.circle(minimap, SHIP_COLOR, center, 4)
-
-    # === 미니맵 붙이기 ===
     surface.blit(minimap, (WIDTH - minimap_width - 10, HEIGHT - minimap_height - 10))
 
 
@@ -310,53 +295,67 @@ def draw_menu(surface, mouse_pos):
 
 
 def draw_instructions(surface, mouse_pos):
-    try:
-        font = pygame.font.SysFont("malgungothic", 28)
-        title_font = pygame.font.SysFont("malgungothic", 48)
-    except:
-        font = pygame.font.SysFont(None, 28)
-        title_font = pygame.font.SysFont(None, 48)
+    global back_button_rect
 
-    y = 50
-    line_height = 35
+    # 최대/최소 제한이 있는 반응형 폰트 크기
+    base_font_size = max(18, min(32, HEIGHT // 25))
+    title_font_size = max(32, min(60, HEIGHT // 12))
+    line_height = int(base_font_size * 1.8)
+
+    try:
+        font = pygame.font.SysFont("malgungothic", base_font_size)
+        title_font = pygame.font.SysFont("malgungothic", title_font_size)
+    except:
+        font = pygame.font.SysFont(None, base_font_size)
+        title_font = pygame.font.SysFont(None, title_font_size)
+
+    margin_x = WIDTH * 0.1
+    current_y = HEIGHT * 0.12
 
     # 타이틀
     title_surf = title_font.render("게임 설명", True, WHITE)
-    surface.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, 10))
+    title_rect = title_surf.get_rect(center=(WIDTH // 2, current_y))
+    surface.blit(title_surf, title_rect)
+    current_y += title_rect.height + line_height // 2
 
+    # 행성 정보
     planets_info = [
         ("빨간 행성", RED_COLOR, "가장 강한 중력을 가집니다."),
         ("초록 행성", GREEN_COLOR, "중간 정도의 중력을 가집니다."),
         ("파란 행성", BLUE_COLOR, "가장 약한 중력을 가집니다."),
     ]
 
-    circle_x = 120
-    text_x = 170
-
     for name, color, desc in planets_info:
-        pygame.draw.circle(surface, color, (circle_x, y + 10), PLANET_RADIUS // 2)
+        circle_radius = PLANET_RADIUS // 2
+        circle_x = margin_x + circle_radius
+        circle_y = current_y + circle_radius
+        pygame.draw.circle(surface, color, (int(circle_x), int(circle_y)), circle_radius)
+
         name_surf = font.render(name, True, WHITE)
         desc_surf = font.render(desc, True, WHITE)
-        surface.blit(name_surf, (text_x, y))
-        surface.blit(desc_surf, (text_x, y + 30))
-        y += 70
 
-    fuel_text = [
+        surface.blit(name_surf, (circle_x + 30, current_y))
+        surface.blit(desc_surf, (circle_x + 30, current_y + base_font_size + 5))
+        current_y += line_height * 2
+
+    # 연료 설명
+    fuel_lines = [
         "우주선은 연료를 사용해 움직입니다.",
-        "연료가 다 떨어지면 움직일 수 없습니다.",
+        "연료가 다 떨어지면 조종할 수 없습니다.",
         "맵 곳곳에 연료 탱크가 있으며,",
         "연료 탱크를 먹으면 연료가 보충됩니다."
     ]
-    y += 20
-    for line in fuel_text:
-        surf = font.render(line, True, WHITE)
-        surface.blit(surf, (50, y))
-        y += line_height
 
-    global back_button_rect
-    back_button_rect = pygame.Rect(WIDTH - 120, HEIGHT - 60, 110, 40)
+    current_y += 10
+    for line in fuel_lines:
+        line_surf = font.render(line, True, WHITE)
+        surface.blit(line_surf, (margin_x, current_y))
+        current_y += line_height
+
+    # 뒤로가기 버튼
+    button_width, button_height = 140, 50
+    back_button_rect = pygame.Rect(WIDTH - button_width - 30, HEIGHT - button_height - 30, button_width, button_height)
     draw_button(surface, back_button_rect, "뒤로가기", mouse_pos)
-
 
 # 한글 폰트 (게임 내 정보용)
 try:
@@ -378,7 +377,7 @@ instructions_button_rect = None
 back_button_rect = None
 
 state = "menu"
-fullscreen = False  # 전체화면 상태 저장
+fullscreen = False
 
 running = True
 
@@ -457,16 +456,13 @@ while running:
 
         camera_offset = ship.pos + shake_offset
 
-        # 경계선 경고는 여전히 카메라 기준으로
         draw_map_boundary_warning(screen, camera_offset)
 
-        # 행성과 연료캡슐 먼저 그리기
         for planet in planets:
             planet.draw(screen, camera_offset)
         for pod in fuelpods:
             pod.draw(screen, camera_offset)
 
-        # 게임 오버 텍스트가 행성 뒤로 가지 않도록 게임 오버 텍스트는 이 후에 그림
         draw_warning(screen, ship, planets, camera_offset)
         ship.draw(screen, camera_offset)
         draw_minimap(screen, ship, planets, fuelpods)
